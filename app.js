@@ -1,160 +1,212 @@
-/**
- * This is an example of a basic node.js script that performs
- * the Authorization Code oAuth2 flow to authenticate against
- * the Spotify Accounts.
- *
- * For more information, read
- * https://developer.spotify.com/web-api/authorization-guide/#authorization_code_flow
- */
-const express = require('express'); // Express web server framework
-const request = require('request'); // "Request" library
-const cors = require('cors');
-const querystring = require('querystring');
-const cookieParser = require('cookie-parser');
-const { config } = require('./config');
+var express = require('express');
+var bodyParser = require("body-parser");
+var http = require('http');
+var request = require('request');
+var rp = require('request-promise');
+var expressWs = require('express-ws');
 
-var client_id = config.clientID; // Your client id
-var client_secret = config.clientSecret; // Your secret
-var redirect_uri = 'http://localhost:3000/callback'; // Your redirect uri
+var app = express();
+expressWs(app);
+
+var client_id = process.env.CLIENT_ID;
+var client_secret = process.env.CLIENT_SECRET;
+var redirect_uri = process.env.REDIRECT_URI;
+
+
+var host; //stores what page called node server
+var scopes = ['user-top-read']; //stores scopes
+var token; //stores current token
+var callbackClosedPopup = false; // set true if callback returned code 200 to close popup, used confirm for /token call
+var dataRecived = false; // set to true when /data from js file is recived
+
+app.set('port', (process.env.PORT || 8080));
+
+app.use(express.static(__dirname + '/public'));
+
+
+// parse application/x-www-form-urlencoded
+app.use(bodyParser.urlencoded({
+  extended: false
+}));
+
+// parse application/json
+app.use(bodyParser.json());
+
+
+
+app.all('*', function(req, res, next) {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Headers", "Cache-Control, Pragma, Origin, Authorization, Content-Type, X-Requested-With");
+  res.header("Access-Control-Allow-Methods", "GET, PUT, POST, OPTIONS");
+  next();
+});
 
 /**
  * Generates a random string containing numbers and letters
  * @param  {number} length The length of the string
  * @return {string} The generated string
  */
-var generateRandomString = function (length) {
-	var text = '';
-	var possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+var generateRandomString = function(length) {
+  var text = '';
+  var possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 
-	for (var i = 0; i < length; i++) {
-		text += possible.charAt(Math.floor(Math.random() * possible.length));
-	}
-	return text;
+  for (var i = 0; i < length; i++) {
+    text += possible.charAt(Math.floor(Math.random() * possible.length));
+  }
+  return text;
 };
+var state;
 
-var stateKey = 'spotify_auth_state';
 
-var app = express();
-
-app.use(express.static(__dirname + '/public'))
-	.use(cors())
-	.use(cookieParser());
-
-app.get('/login', function (req, res) {
-	var state = generateRandomString(16);
-	res.cookie(stateKey, state);
-
-	// your application requests authorization
-	var scope = 'user-read-private user-read-email user-top-read';
-	res.redirect(
-		'https://accounts.spotify.com/authorize?' +
-			querystring.stringify({
-				response_type: 'code',
-				client_id: client_id,
-				scope: scope,
-				redirect_uri: redirect_uri,
-				state: state
-			})
-	);
+// data sent when page loads, host scopes
+app.post('/data', function(req, res) {
+  host = req.body.hostURL;
+  scopes = req.body.scopes;
+  if (scopes) {
+    dataRecived = true;
+  }
+  res.end();
 });
 
-app.get('/callback', function (req, res) {
-	// your application requests refresh and access tokens
-	// after checking the state parameter
 
-	var code = req.query.code || null;
-	var state = req.query.state || null;
-	var storedState = req.cookies ? req.cookies[stateKey] : null;
+// when login popup is called, redirecets it to correct url
+app.get('/login', function(req, res) {
+  // set token to null incase already had set info example logout and someone else loged in
+  token = null;
+  state = generateRandomString(16);
 
-	if (state === null || state !== storedState) {
-		res.redirect(
-			'/#' +
-				querystring.stringify({
-					error: 'state_mismatch'
-				})
-		);
-	} else {
-		res.clearCookie(stateKey);
-		var authOptions = {
-			url: 'https://accounts.spotify.com/api/token',
-			form: {
-				code: code,
-				redirect_uri: redirect_uri,
-				grant_type: 'authorization_code'
-			},
-			headers: {
-				Authorization: 'Basic ' + new Buffer(client_id + ':' + client_secret).toString('base64')
-			},
-			json: true
-		};
+  // the loop makes sure scopes is populated before calling login redirect on the popup
+  function loginRedirect() {
+    if (scopes.length > 0) {
+      var url = 'https://accounts.spotify.com/authorize?client_id=' + client_id +
+        '&redirect_uri=' + encodeURIComponent(redirect_uri) +
+        '&scope=' + encodeURIComponent(scopes.join(' ')) +
+        '&response_type=code' +
+        '&state=' + state +
+        // can force user to approve scopes every time.
+        '&show_dialog=true';
+      res.redirect(url);
+    } else {
+      setTimeout(function() {
+        loginRedirect();
+      }, 500);
+    }
+  }
 
-		request.post(authOptions, function (error, response, body) {
-			if (!error && response.statusCode === 200) {
-				var access_token = body.access_token,
-					refresh_token = body.refresh_token;
+  // check to see if scopes have been populated by post to data
+  if (dataRecived == true) {
+    loginRedirect();
+  } else {
+    res.send('Error loging in. Scopes not populated. Close this window and try again');
+  }
 
-				var options = {
-					url: 'https://api.spotify.com/v1/me',
-					headers: { Authorization: 'Bearer ' + access_token },
-					json: true
-				};
-
-				var topOptions = {
-					url: 'https://api.spotify.com/v1/me/top/tracks',
-					headers: { Authorization: 'Bearer ' + access_token },
-					json: true
-				};
-
-				// use the access token to access the Spotify Web API
-				request.get(topOptions, function (error, response, body) {
-					for (let i = 0; i < body.items.length; i++) {
-						console.log(body);
-					}
-				});
-
-				// we can also pass the token to the browser to make requests from there
-				res.redirect(
-					'/#' +
-						querystring.stringify({
-							access_token: access_token,
-							refresh_token: refresh_token
-						})
-				);
-			} else {
-				res.redirect(
-					'/#' +
-						querystring.stringify({
-							error: 'invalid_token'
-						})
-				);
-			}
-		});
-	}
 });
 
-app.get('/refresh_token', function (req, res) {
-	// requesting access token from refresh token
-	var refresh_token = req.query.refresh_token;
-	var authOptions = {
-		url: 'https://accounts.spotify.com/api/token',
-		headers: { Authorization: 'Basic ' + new Buffer(client_id + ':' + client_secret).toString('base64') },
-		form: {
-			grant_type: 'refresh_token',
-			refresh_token: refresh_token
-		},
-		json: true
-	};
+// callback from login popup, passes spotify response codes, to turn it into a token
+app.post('/callback', function(req, res) {
+  var data = req.body;
 
-	request.post(authOptions, function (error, response, body) {
-		if (!error && response.statusCode === 200) {
-			var access_token = body.access_token;
-			res.send({
-				access_token: access_token
-			});
-		}
-	});
+  // test if state is sent back the same
+  if (data.state == state) {
+    var authOptions = {
+      method: 'POST',
+      url: 'https://accounts.spotify.com/api/token',
+      form: {
+        code: data.code,
+        redirect_uri: redirect_uri,
+        grant_type: 'authorization_code'
+      },
+      headers: {
+        'Authorization': 'Basic ' + (new Buffer(client_id + ':' + client_secret).toString('base64'))
+      },
+      json: true
+    };
+
+    // convert code into token for intial login
+    rp(authOptions).
+    then(function(body) {
+
+      token = {
+        access_token: body.access_token,
+        refresh_token: body.refresh_token,
+        expires_in: body.expires_in
+      };
+
+      // send status code to close popup and set callbackClosedPopup to true
+      callbackClosedPopup = true;
+      res.sendStatus(200);
+    }).catch(function(err) {
+      res.sendStatus(400);
+      console.log(err);
+      console.log('error');
+    });
+  } else {
+    console.log('states did not match or exist');
+  }
+
 });
 
-app.listen(process.env.PORT || 8080, function () {
-	console.log('Server is running on port 8080');
+// when callback closes popup with status code spotifyLogin.js opens a websocket to recive the tokens
+app.ws('/token', function(ws, req) {
+
+  function sendToken() {
+    if (token) {
+      ws.send(JSON.stringify(token));
+    } else {
+      setTimeout(sendToken, 500);
+    }
+  }
+
+  // test to see if callback sent code 200 to close else send to close connection
+  if (callbackClosedPopup == true) {
+    sendToken();
+  } else {
+    ws.send(400);
+  }
+
+});
+
+// called to refresh the access_token
+app.ws('/refresh', function(ws, req) {
+  ws.on('message', function(old_token) {
+
+    old_token = JSON.parse(old_token);
+
+    var data = req.body;
+    var authOptions = {
+      method: 'POST',
+      url: 'https://accounts.spotify.com/api/token',
+      form: {
+        refresh_token: old_token,
+        grant_type: 'refresh_token'
+      },
+      headers: {
+        'Authorization': 'Basic ' + (new Buffer(client_id + ':' + client_secret).toString('base64'))
+      },
+      json: true
+    };
+
+    // get newToken using refresh_token
+    rp(authOptions)
+      .then(function(body) {
+        var newToken = {
+          access_token: body.access_token,
+        };
+        ws.send(JSON.stringify(newToken));
+      }).catch(function(err) {
+        console.log(err);
+        var error = {
+          statusCode: '400',
+          message: err.message
+        };
+        ws.send(JSON.stringify(error));
+      });
+
+  });
+});
+
+
+
+app.listen(app.get('port'), function() {
+  console.log('Node app is running on port', app.get('port'));
 });
