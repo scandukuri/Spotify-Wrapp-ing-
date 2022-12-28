@@ -1,0 +1,96 @@
+<html>
+
+<head>
+  <title>Spotify Callback</title>
+  <script>
+    // After user logins into Spotify, Spotify redirects the popup to a set <url>/callback
+    // this popup intercepts it and procces the url for information Spotify sent back
+    (function() {
+
+      // gets web address of called windows location/node server
+      var nodeHost = window.location.origin;
+
+      // splits the url to set infrom into the object data{code: , state:}
+      var urlSplit = window.location.href.split('?');
+      urlSplit = urlSplit[1].split('&');
+      var data = {};
+      for (var i = 0; i < urlSplit.length; i++) {
+        if (urlSplit[i].indexOf('=') > 0) {
+          var split = urlSplit[i].split('=');
+          data[split[0]] = split[1];
+        }
+      }
+
+      // if data object has code: then send it to node server /callback
+      if (data.code) {
+        fetch(nodeHost + '/callback', {
+          method: 'POST',
+          body: JSON.stringify(data),
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }).then(function(response) {
+          if (response.status == 200) {
+            window.close();
+          } else if (response.status == 400) {
+            window.alert('An error has occurred\nPlease check the console log');
+          }
+        }).catch(function(err) {
+          // Error :(
+          window.alert('An error has occurred\nPlease check the console log');
+          console.log(err);
+          console.log('error');
+        });
+      } else {
+        window.alert('An error has occurred\nPlease try loging in again');
+        window.location.replace(nodeHost + '/login')
+      }
+    })();
+  </script>
+  <style>
+    .container {
+      height: 100%;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .header {
+      width: 100%;
+      text-align: center;
+    }
+
+    .loader {
+      margin: auto;
+      border: 16px solid #f3f3f3;
+      border-top: 16px solid #1DB954;
+      border-radius: 50%;
+      width: 50vw;
+      height: 50vw;
+      animation: spin 2s linear infinite;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="wrapper">
+      <div class="header">
+        <h1>This page should close in a few seconds.</h1>
+      </div>
+      <div class="loader"></div>
+    </div>
+  </div>
+</body>
+
+</html>
