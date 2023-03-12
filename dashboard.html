@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Top 5 Songs</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+      body {
+        background-color: #FFFFFF;
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        font-family: HelveticaNeue, sans-serif;
+        color: #333333;
+        max-width: 100%;
+        overflow-x: hidden;
+      }
+
+      h1 {
+        font-size: 2rem;
+        font-family: HelveticaNeue-Bold, sans-serif;
+        margin-bottom: 0.5rem;
+      }
+
+      #data-container {
+        font-size: 2rem;
+        max-width: 100%;
+        overflow-x: auto;
+        text-align: left;
+      }
+
+      table th {
+        font-size: 1.5rem;
+      }
+
+      table td {
+        font-size: 1.8rem;
+      }
+
+      /* Define a loading screen with a message and a spinner */
+      #loading-screen {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        font-size: 1rem;
+      }
+
+      #loading-screen span {
+        margin-bottom: 1rem;
+      }
+
+      #loading-screen .spinner {
+        border: 8px solid #f3f3f3;
+        border-top: 8px solid #3498db;
+        border-radius: 50%;
+        width: 60px;
+        height: 60px;
+        animation: spin 2s linear infinite;
+      }
+
+      /* Define an animation for the spinner */
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <h1>Spotify Wrapp(ing)</h1>
+      <div id="data-container"></div>
+      <div id="loading-screen">
+        <span>Loading data...</span>
+        <div class="spinner"></div>
+      </div>
+    </div>
+    <script>
+      // Get a reference to the data container element
+const dataContainer = document.querySelector('#data-container');
+
+function createTable(data) {
+  // Create a new <table> element
+  const table = document.createElement('table');
+  table.style.margin = 'auto';
+
+  // Create a new <thead> element
+  const thead = document.createElement('thead');
+
+  // Create a new <tr> element for the table header row
+  const headerRow = document.createElement('tr');
+
+  // Create a new <th> element for each column in the table
+  const numberHeader = document.createElement('th');
+  const imageHeader = document.createElement('th');
+  const songHeader = document.createElement('th');
+  
+
+  // Set the text content of each table header
+  numberHeader.textContent = 'Number';
+  imageHeader.textContent = 'Image';
+  songHeader.textContent = 'Song Name';
+
+
+  // Append the table header elements to the table header row
+  headerRow.appendChild(numberHeader);
+  headerRow.appendChild(imageHeader);
+  headerRow.appendChild(songHeader);
+  
+
+  // Append the header row to the table header
+  thead.appendChild(headerRow);
+
+  // Append the table header to the table
+  table.appendChild(thead);
+
+  // Create a new <tbody> element for the table body
+  const tbody = document.createElement('tbody');
+
+  // Loop through each item in the data object
+  for (const key in data.Name) {
+    // Create a new <tr> element for each row in the table
+    const row = document.createElement('tr');
+
+    // Create a new <td> element for the number column
+    const numberColumn = document.createElement('td');
+
+    // Set the text content of the number column to the item number
+    numberColumn.textContent = key;
+
+    // Create a new <td> element for the image column
+      const imageColumn = document.createElement('td');
+
+// Create a new <img> element for the image
+// Create a new <img> element for the image
+const image = document.createElement('img');
+
+// Set the src attribute of the image element to the link in the data object
+image.setAttribute('src', data['Cover Art Largest Image Link'][key]);
+
+// Set the alt attribute of the image element to the song name
+image.setAttribute('alt', data.Name[key]);
+
+// Set the width and height attributes of the image element to half of their original values
+image.setAttribute('width', '30%');
+image.setAttribute('height', '30%');
+
+// Append the image element to the image column
+imageColumn.appendChild(image);
+
+    // Create a new <td> element for the song name column
+    const songColumn = document.createElement('td');
+
+    // Set the text content of the song name column to the song name
+    songColumn.textContent = data.Name[key];
+
+    
+
+    // Append the number column, song name column, and image column to the row
+    row.appendChild(numberColumn);
+    row.appendChild(imageColumn);
+    row.appendChild(songColumn);
+    
+
+    // Append the row to the table body
+    tbody.appendChild(row);
+  }
+
+  // Append the table body to the table
+  table.appendChild(tbody);
+
+  // Replace the contents of the data container with the new table element
+  dataContainer.innerHTML = '';
+  dataContainer.appendChild(table);
+  
+  document.getElementById('loading-screen').style.display = 'none';
+}
+
+function refreshData() {
+  // Fetch the data from the /data endpoint
+  fetch('/data')
+    .then(response => response.json())
+    .then(data => {
+      // Create a new table element with the data
+      createTable(data);
+    })
+    .catch(error => console.error(error));
+}
+
+// Refresh the data every 5 seconds
+setInterval(refreshData, 5000);
+
+// Refresh the data immediately on page load
+refreshData();
+
+    </script>
+  </body>
+</html>

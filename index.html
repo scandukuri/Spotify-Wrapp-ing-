@@ -1,13 +1,39 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
   <head>
-    <title>Spotify Login</title>
+    <meta charset="UTF-8">
+    <title>Spotify Wrapp(ing)</title>
+    <style>
+      body {
+        background-color: #FFFFFF;
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+      }
+
+      h1 {
+        font-size: 5rem;
+        font-family: HelveticaNeue-Bold, sans-serif;
+        color: #333333;
+        margin-bottom: 2rem;
+      }
+
+      a {
+        font-size: 2.5rem;
+        font-family: HelveticaNeue, sans-serif;
+        color: #1DB954;
+        text-decoration: none;
+      }
+    </style>
   </head>
   <body>
-    <h1>Spotify Login</h1>
-    <form>
-      <input type="button" value="Login" onclick="SpotifyHeroku.login()">
-    </form> 
-    <script src="https://spotifywrapping.herokuapp.com/spotifyLogin.js"></script>
-</body>
-
+    <div>
+      <h1>Spotify Wrapp(ing)</h1>
+      <p><a href="/authorize">log in with Spotify</a></p>
+    </div>
+  </body>
 </html>
