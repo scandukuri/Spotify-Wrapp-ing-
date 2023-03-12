@@ -26,6 +26,13 @@
         margin-bottom: 0.5rem;
       }
 
+      table {
+        align-items: center;
+        margin: auto;
+        overflow-x: hidden;
+        width: 100%;
+      }
+
       #data-container {
         font-size: 2rem;
         max-width: 100%;
@@ -34,11 +41,12 @@
       }
 
       table th {
-        font-size: 1.5rem;
+        display: none;
       }
 
-      table td {
-        font-size: 1.8rem;
+
+      tbody tr:hover {
+        background-color: #d3d3d3;
       }
 
       /* Define a loading screen with a message and a spinner */
@@ -95,10 +103,15 @@ function createTable(data) {
   // Create a new <tr> element for the table header row
   const headerRow = document.createElement('tr');
 
+
   // Create a new <th> element for each column in the table
   const numberHeader = document.createElement('th');
   const imageHeader = document.createElement('th');
   const songHeader = document.createElement('th');
+
+  numberHeader.setAttribute('width', '20%')
+  imageHeader.setAttribute('width', '20%')
+  songHeader.setAttribute('width', '60%')
   
 
   // Set the text content of each table header
@@ -147,8 +160,8 @@ image.setAttribute('src', data['Cover Art Largest Image Link'][key]);
 image.setAttribute('alt', data.Name[key]);
 
 // Set the width and height attributes of the image element to half of their original values
-image.setAttribute('width', '30%');
-image.setAttribute('height', '30%');
+image.setAttribute('width', '10%');
+image.setAttribute('height', '10%');
 
 // Append the image element to the image column
 imageColumn.appendChild(image);
