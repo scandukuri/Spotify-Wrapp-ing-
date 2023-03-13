@@ -11,7 +11,7 @@ access_token = input()
 
 if access_token:
     sp = spotipy.Spotify(auth=access_token)
-    results = sp.current_user_top_tracks(limit=50, offset=0, time_range='short_term')
+    results = sp.current_user_top_tracks(limit=5, offset=0, time_range='short_term')
     results = results['items']
 else:
     print("Can't get token for user.")
